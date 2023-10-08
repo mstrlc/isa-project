@@ -33,10 +33,12 @@
 *.exe
 *.out
 *.app
-
+isa-ldapserver
 
 # VS Code config
 .vscode
 
 # macOS folder attributes
 .DS_Store
+# dsym
+*/*.dSYM

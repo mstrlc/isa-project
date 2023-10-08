@@ -3,11 +3,9 @@
 # Author: Matyas Strelec xstrel03
 
 CC=g++
-CFLAGS=-std=c++20 -Wall -Wextra -pedantic -fcommon
-DBFLAGS=-std=c++20 -Wall -Wextra -pedantic -fcommon -g -fsanitize=address
+CFLAGS=-std=c++20 -Wall -Wextra -pedantic -O0 -g
 
 SRC_DIR := src
-INC_DIR := include
 DOC_DIR := doc
 
 EXE := isa-ldapserver
@@ -22,20 +20,14 @@ all: $(EXE)
 $(EXE): $(OBJ)
 	$(CC) $(CFLAGS) -o $@ $^
 
-%.o: %.c
+%.o: %.cpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 doc/manual.pdf: doc/manual.md
 	pandoc -V geometry:margin=2cm --variable urlcolor=blue $< -o $@
 
-debug: $(OBJ)
-	$(CC) $(DBFLAGS) -o $(EXE) $^ -g
-
 doc: doc/manual.pdf
-
-run:
-	make
-	./$(EXE)
 
 clean:
 	rm -f $(OBJ) $(EXE) $(DOC)
+	rm -rf $(SRC_DIR)/*.dSYM
