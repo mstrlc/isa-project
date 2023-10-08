@@ -3,9 +3,17 @@
 #include <fstream>
 #include <sstream>
 
+/**
+ * @brief Read a CSV file by filename, returning a vector of vectors of strings.
+ *
+ * Expected format is data;data;data\n or data;data;data\r\n
+ *
+ * @param filename The name of the CSV file to read (relative to the project root)
+ * @return std::vector<std::vector<std::string> > A vector of vectors of strings read from the CSV file
+ */
 std::vector<std::vector<std::string> > read_csv(std::string filename) {
     std::vector<std::vector<std::string> > data;
-    std::ifstream file("../" + filename);
+    std::ifstream file("../" + filename);  // Relative to the project root (go up one directory from src/)
 
     if (!file.is_open()) {
         throw std::runtime_error("File " + filename + " not found");
@@ -21,7 +29,11 @@ std::vector<std::vector<std::string> > read_csv(std::string filename) {
         vector.push_back(temp);
         getline(ss, temp, ';');
         vector.push_back(temp);
-        getline(ss, temp, '\r');
+        getline(ss, temp, '\n');
+        // Remove trailing characters if source CSV is CRLF
+        if (temp[temp.length() - 1] == '\r') {
+            temp.erase(temp.length() - 1);
+        }
         vector.push_back(temp);
 
         data.push_back(vector);
