@@ -2,6 +2,7 @@
 #include <string>
 
 #include "csv.h"
+#include "server.h"
 
 #define LDAP_DEFAULT_PORT 389
 
@@ -40,6 +41,8 @@ int main(int argc, char** argv) {
     std::cout << "File path: " << filename << std::endl;
 
     std::vector<std::vector<std::string> > data = read_csv(filename);
+
+    server(port, data);
 
     return 0;
 }

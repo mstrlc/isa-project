@@ -13,7 +13,7 @@
  */
 std::vector<std::vector<std::string> > read_csv(std::string filename) {
     std::vector<std::vector<std::string> > data;
-    std::ifstream file("../" + filename);  // Relative to the project root (go up one directory from src/)
+    std::ifstream file(filename);
 
     if (!file.is_open()) {
         throw std::runtime_error("File " + filename + " not found");
