@@ -9,7 +9,7 @@
 
 #include "ber.h"
 
-int server(int port, std::vector<std::vector<std::string> > data) {
+int server(int port, std::vector<std::vector<std::string>> data) {
     // Create a socket
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
@@ -48,15 +48,28 @@ int server(int port, std::vector<std::vector<std::string> > data) {
         return 1;
     }
 
+    // TODO allocate dynamically
     unsigned char buffer[4096];
+
+    // Send bindResponse
+    // Receive searchRequest
+    // Send searchResEntry
+    // Send searchResDone
+    // Receive next searchRequest or unbindRequest
+
     ssize_t bytesRead;
 
+    // Receive bindRequest
     while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
         std::cout << "Received " << bytesRead << " bytes from client.\n";
         break;
     }
 
-    processData(buffer);
+    // TODO validate bindRequest
+
+    int messageId = buffer[4];
+    std::cout << "Received bindRequest" << std::endl
+              << "Message ID " << messageId << std::endl;
 
     // Close the sockets
     close(clientSocket);
