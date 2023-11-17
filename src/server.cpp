@@ -8,10 +8,13 @@
 #include <string>
 
 #include "ber.h"
+#include "ldap.h"
 
-int server(int port, std::vector<std::vector<std::string>> data) {
+int serverSocket;
+
+int setup(int port) {
     // Create a socket
-    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
         std::cerr << "Error: Couldn't create socket.\n";
         return 1;
@@ -35,8 +38,12 @@ int server(int port, std::vector<std::vector<std::string>> data) {
         close(serverSocket);
         return 1;
     }
-
     std::cout << "Server listening on port " << port << "...\n";
+}
+
+int server(int port, std::vector<std::vector<std::string>> data) {
+    // Setup the server
+    setup(port);
 
     // Accept incoming connections and print received data
     sockaddr_in clientAddr{};
@@ -70,6 +77,25 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     int messageId = buffer[4];
     std::cout << "Received bindRequest" << std::endl
               << "Message ID " << messageId << std::endl;
+
+    // Send bindResponse
+
+    std::vector<unsigned char> bindResponse = build_ldapmessage(messageId, BIND_RESPONSE);
+
+    std::cout << "Sending bindResponse" << std::endl;
+
+    while (send(clientSocket, bindResponse.data(), bindResponse.size(), 0) > 0) {
+        std::cout << "Sent " << bindResponse.size() << " bytes to client.\n";
+        break;
+    }
+
+    // Receive searchRequest
+    while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
+        std::cout << "Received " << bytesRead << " bytes from client.\n";
+        break;
+    }
+
+    // TODO validate searchRequest
 
     // Close the sockets
     close(clientSocket);
