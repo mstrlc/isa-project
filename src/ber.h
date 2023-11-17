@@ -4,17 +4,19 @@
 #include <string>
 #include <vector>
 
-void print_hex(std::vector<unsigned char> data);
+#define ber_bytes std::vector<unsigned char>
 
-std::vector<unsigned char> create_integer(int input);
+void print_hex(ber_bytes data);
 
-std::vector<unsigned char> create_octet_string(std::string input);
+ber_bytes create_integer(int input);
 
-std::vector<unsigned char> create_sequence(std::vector<std::vector<unsigned char>> input);
-std::vector<unsigned char> create_sequence(std::vector<std::vector<unsigned char>> input, unsigned char tag);
+ber_bytes create_octet_string(std::string input);
 
-std::vector<unsigned char> create_set(std::vector<std::vector<unsigned char>> input);
+ber_bytes create_sequence(std::vector<ber_bytes> input);
+ber_bytes create_sequence(std::vector<ber_bytes> input, unsigned char tag);
 
-std::vector<unsigned char> create_enumerated(int input);
+ber_bytes create_set(std::vector<ber_bytes> input);
+
+ber_bytes create_enumerated(int input);
 
 #endif  // BER_H

@@ -2,6 +2,9 @@
 #define LDAP_H
 
 #include <vector>
+
+#include "ber.h"
+
 // BER tags
 #define BER_INTEGER 0x02
 #define BER_OCTET_STRING 0x04
@@ -22,12 +25,12 @@
 #define RESULT_OPERATIONS_ERROR 0x01
 #define RESULT_PROTOCOL_ERROR 0x02
 
-std::vector<unsigned char> build_ldapmessage(int message_id, unsigned char type);
+ber_bytes build_ldapmessage(int message_id, unsigned char type);
 
-std::vector<unsigned char> build_bindresponse(unsigned char result_code);
+ber_bytes build_bindresponse(unsigned char result_code);
 
-std::vector<unsigned char> build_searchresentry();
+ber_bytes build_searchresentry();
 
-std::vector<unsigned char> build_searchresdone();
+ber_bytes build_searchresdone(unsigned char result_code);
 
 #endif  // LDAP_H
