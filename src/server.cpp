@@ -39,6 +39,7 @@ int setup(int port) {
         return 1;
     }
     std::cout << "Server listening on port " << port << "...\n";
+    return 0;
 }
 
 int server(int port, std::vector<std::vector<std::string>> data) {
@@ -80,7 +81,9 @@ int server(int port, std::vector<std::vector<std::string>> data) {
 
     // Send bindResponse
 
-    std::vector<unsigned char> bindResponse = build_ldapmessage(messageId, BIND_RESPONSE);
+    ber_bytes bindResponse = build_ldapmessage(messageId, BIND_RESPONSE);
+    std::cout << "bindResponse: " << std::endl;
+    print_hex(bindResponse);
 
     std::cout << "Sending bindResponse" << std::endl;
 
@@ -96,6 +99,34 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     }
 
     // TODO validate searchRequest
+
+    messageId = buffer[4];
+    std::cout << "Received searchRequest" << std::endl
+              << "Message ID " << messageId << std::endl;
+
+    // Send searchResEntry
+
+    ber_bytes searchResEntry = build_ldapmessage(messageId, SEARCH_RESULT_ENTRY);
+
+    std::cout << "Sending searchResEntry" << std::endl;
+
+    while (send(clientSocket, searchResEntry.data(), searchResEntry.size(), 0) > 0) {
+        std::cout << "Sent " << searchResEntry.size() << " bytes to client.\n";
+        break;
+    }
+
+    // Send searchResDone
+
+    ber_bytes searchResDone = build_ldapmessage(messageId, SEARCH_RESULT_DONE);
+    std::cout << "searchResDone: " << std::endl;
+    print_hex(searchResDone);
+
+    std::cout << "Sending searchResDone" << std::endl;
+
+    while (send(clientSocket, searchResDone.data(), searchResDone.size(), 0) > 0) {
+        std::cout << "Sent " << searchResDone.size() << " bytes to client.\n";
+        break;
+    }
 
     // Close the sockets
     close(clientSocket);
