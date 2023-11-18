@@ -14,42 +14,28 @@
 // MessageID ::= INTEGER (0 ..  maxInt)
 
 // maxInt INTEGER ::= 2147483647 -- (2^^31 - 1) --
-ber_bytes build_ldapmessage(int message_id, unsigned char type) {
+ber_bytes build_ldapmessage(int message_id, ber_bytes protocolop_bytes) {
     // MessageID
     ber_bytes message_id_bytes = create_integer(message_id);
 
     // ProtocolOp
-    ber_bytes protocol_op_bytes;
-    switch (type) {
-        case BIND_RESPONSE:
-            protocol_op_bytes = build_bindresponse(RESULT_SUCCESS);
-            break;
-
-        case SEARCH_RESULT_ENTRY:
-            protocol_op_bytes = build_searchresentry();
-            break;
-
-        case SEARCH_RESULT_DONE:
-            protocol_op_bytes = build_searchresdone(RESULT_SUCCESS);
-            break;
-
-        default:
-            break;
-    }
+    ber_bytes protocol_op_bytes = protocolop_bytes;
 
     // Controls
     // TODO implement controls
 
     // Put together the LDAPMessage
-    ber_bytes result;
+    ber_bytes ldapmessage_bytes;
 
-    result.push_back(BER_SEQUENCE);                                        // LDAPMessage
-    result.push_back(message_id_bytes.size() + protocol_op_bytes.size());  // Length
+    ldapmessage_bytes.push_back(BER_SEQUENCE);  // LDAPMessage
+    ber_bytes length_bytes = create_length(message_id_bytes.size() + protocol_op_bytes.size());
+    for (unsigned char c : length_bytes) {
+        ldapmessage_bytes.push_back(c);
+    }
+    ldapmessage_bytes.insert(ldapmessage_bytes.end(), message_id_bytes.begin(), message_id_bytes.end());
+    ldapmessage_bytes.insert(ldapmessage_bytes.end(), protocol_op_bytes.begin(), protocol_op_bytes.end());
 
-    result.insert(result.end(), message_id_bytes.begin(), message_id_bytes.end());
-    result.insert(result.end(), protocol_op_bytes.begin(), protocol_op_bytes.end());
-
-    return result;
+    return ldapmessage_bytes;
 }
 
 // BindResponse ::= [APPLICATION 1] SEQUENCE {
@@ -67,7 +53,7 @@ ber_bytes build_ldapmessage(int message_id, unsigned char type) {
 //      matchedDN          LDAPDN,
 //      diagnosticMessage  LDAPString,
 //      referral           [3] Referral OPTIONAL }
-ber_bytes build_bindresponse(unsigned char result_code) {
+ber_bytes build_bindresponse(int messageid, unsigned char result_code) {
     // ResultCode
     ber_bytes result_code_bytes = create_enumerated(result_code);
 
@@ -85,7 +71,10 @@ ber_bytes build_bindresponse(unsigned char result_code) {
 
     // Put together the BindResponse
     ber_bytes bindresponse_bytes = create_sequence({result_code_bytes, matched_dn_bytes, diagnostic_message_bytes}, BIND_RESPONSE);
-    return bindresponse_bytes;
+
+    ber_bytes ldapmessage_bytes = build_ldapmessage(messageid, bindresponse_bytes);
+
+    return ldapmessage_bytes;
 }
 
 // PartialAttributeList ::= SEQUENCE OF
@@ -130,7 +119,7 @@ ber_bytes build_partialattributelist(std::vector<std::tuple<std::string, std::st
 //                         -- Constrained to <attributedescription>
 //
 // AttributeValue ::= OCTET STRING
-ber_bytes build_searchresentry(std::string uid, std::string cn, std::string mail) {
+ber_bytes build_searchresentry(int messageid, std::string uid, std::string cn, std::string mail) {
     // objectName
     std::string objectname = "uid=" + uid + ",ou=fit,dc=vutbr,dc=cz";
     ber_bytes objectname_bytes = create_octet_string(objectname);
@@ -141,7 +130,9 @@ ber_bytes build_searchresentry(std::string uid, std::string cn, std::string mail
     // Put together the SearchResultEntry
     ber_bytes searchresultentry_bytes = create_sequence({objectname_bytes, attributes_bytes}, SEARCH_RESULT_ENTRY);
 
-    return searchresultentry_bytes;
+    ber_bytes ldapmessage_bytes = build_ldapmessage(messageid, searchresultentry_bytes);
+
+    return ldapmessage_bytes;
 }
 
 // SearchResultDone ::= [APPLICATION 5] LDAPResult
@@ -157,7 +148,7 @@ ber_bytes build_searchresentry(std::string uid, std::string cn, std::string mail
 //      matchedDN          LDAPDN,
 //      diagnosticMessage  LDAPString,
 //      referral           [3] Referral OPTIONAL }
-ber_bytes build_searchresdone(unsigned char result_code) {
+ber_bytes build_searchresdone(int messageid, unsigned char result_code) {
     // ResultCode
     ber_bytes result_code_bytes = create_enumerated(result_code);
 
@@ -173,5 +164,7 @@ ber_bytes build_searchresdone(unsigned char result_code) {
     // Put together the SearchResultDone
     ber_bytes searchresultdone_bytes = create_sequence({result_code_bytes, matched_dn_bytes, diagnostic_message_bytes}, SEARCH_RESULT_DONE);
 
-    return searchresultdone_bytes;
+    ber_bytes ldapmessage_bytes = build_ldapmessage(messageid, searchresultdone_bytes);
+
+    return ldapmessage_bytes;
 }
