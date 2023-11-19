@@ -7,8 +7,8 @@
 
 void print_help() {
     std::cout << "Usage: ./isa-ldapserver {-p <port>} -f <soubor>" << std::endl;
-    std::cout << "-p <port>: Umožňuje specifikovat konkrétní port, na kterém začne server naslouchat požadavkům klientů. Výchozí hodnota čísla portu je 389." << std::endl;
-    std::cout << "-f <soubor>: Cesta k textovému soubor ve formátu CSV." << std::endl;
+    std::cout << "-p <port>: Set specific port for server listening to client requests. Default port is 389." << std::endl;
+    std::cout << "-f <file>: Path to a text file in CSV format containing the database." << std::endl;
 }
 
 int main(int argc, char** argv) {
