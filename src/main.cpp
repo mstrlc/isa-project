@@ -3,7 +3,6 @@
 
 #include "csv.h"
 #include "server.h"
-
 #define LDAP_DEFAULT_PORT 389
 
 void print_help() {
