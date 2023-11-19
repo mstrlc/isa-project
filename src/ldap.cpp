@@ -1,3 +1,13 @@
+/*
+ * ldap.cpp
+ * 2023-11-20
+ *
+ * ISA project 2023
+ * LDAP server
+ *
+ * Matyas Strelec xstrel03
+ */
+
 #include "ldap.h"
 
 #include <string>

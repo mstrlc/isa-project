@@ -1,3 +1,13 @@
+/*
+ * server.cpp
+ * 2023-11-20
+ *
+ * ISA project 2023
+ * LDAP server
+ *
+ * Matyas Strelec xstrel03
+ */
+
 #include "server.h"
 
 #include <arpa/inet.h>
