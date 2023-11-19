@@ -1,3 +1,4 @@
+
 /*
  * server.cpp
  * 2023-11-20
@@ -21,6 +22,33 @@
 #include "ldap.h"
 
 int serverSocket;
+
+ber_bytes receive_bytes(int client_socket) {
+    unsigned char buffer[4096];
+    bzero(buffer, sizeof(buffer));
+    int bytes_read;
+    while ((bytes_read = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
+        std::cout << "Received " << bytes_read << " bytes from client.\n";
+        break;
+    }
+    std::cout << bytes_read << std::endl;
+    return ber_bytes(buffer, buffer + bytes_read);
+}
+
+int send_bytes(int client_socket, ber_bytes bytes) {
+    while (send(client_socket, bytes.data(), bytes.size(), 0) > 0) {
+        std::cout << "Sent " << bytes.size() << " bytes to client.\n";
+        break;
+    }
+    return 0;
+}
+
+unsigned char get_protocolop(ber_bytes bytes) {
+    BERreader reader = BERreader(bytes);
+    reader.read_tag();         // LDAP message tag
+    reader.read_integer();     // Message ID
+    return reader.read_tag();  // ProtocolOp tag
+}
 
 int setup(int port) {
     // Create a socket
@@ -57,6 +85,7 @@ int setup(int port) {
 int server(int port, std::vector<std::vector<std::string>> data) {
     // Setup the server
     setup(port);
+    ber_bytes bytes;
 
     // Accept incoming connections and print received data
     sockaddr_in clientAddr{};
@@ -69,9 +98,8 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     }
 
     // Receive bindRequest
-    BindRequest bindrequest = BindRequest();
-    bindrequest.receive(clientSocket);
-    bindrequest.construct();
+    bytes = receive_bytes(clientSocket);
+    BindRequest bindrequest = BindRequest(bytes);
 
     // TODO validate bindRequest
 
@@ -80,12 +108,11 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     bindresponse.set_message_id(bindrequest.get_message_id());
     bindresponse.set_result_code(RESULT_SUCCESS);
     bindresponse.build();
-    bindresponse.send(clientSocket);
+    send_bytes(clientSocket, bindresponse.get_bytes());
 
     // Receive searchRequest
-    SearchRequest searchrequest = SearchRequest();
-    searchrequest.receive(clientSocket);
-    searchrequest.construct();
+    bytes = receive_bytes(clientSocket);
+    SearchRequest searchrequest = SearchRequest(bytes);
 
     // TODO validate searchRequest
 
@@ -103,7 +130,7 @@ int server(int port, std::vector<std::vector<std::string>> data) {
         SearchResEntry searchresentry = SearchResEntry(uid, cn, mail);
         searchresentry.set_message_id(searchrequest.get_message_id());
         searchresentry.build();
-        searchresentry.send(clientSocket);
+        send_bytes(clientSocket, searchresentry.get_bytes());
 
         index++;
     }
@@ -112,12 +139,11 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     SearchResDone searchresdone = SearchResDone(RESULT_SUCCESS);
     searchresdone.set_message_id(searchrequest.get_message_id());
     searchresdone.build();
-    searchresdone.send(clientSocket);
+    send_bytes(clientSocket, searchresdone.get_bytes());
 
     // Receive unbindRequest
-    UnbindRequest unbindrequest = UnbindRequest();
-    unbindrequest.receive(clientSocket);
-    unbindrequest.construct();
+    bytes = receive_bytes(clientSocket);
+    UnbindRequest unbindrequest = UnbindRequest(bytes);
 
     // TODO validate unbindRequest
 

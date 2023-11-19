@@ -36,26 +36,14 @@ class LDAPMessage {
 
 class Request : public LDAPMessage {
    public:
-    Request() {
+    Request(ber_bytes bytes) {
         this->reader = BERreader(bytes);
     }
 
     BERreader reader;
 
-    int receive(int client_socket) {
-        unsigned char buffer[4096];
-        int bytes_read;
-        while ((bytes_read = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
-            std::cout << "Received " << bytes_read << " bytes from client.\n";
-            break;
-        }
-        std::cout << bytes_read << std::endl;
-        this->bytes = ber_bytes(buffer, buffer + bytes_read);
-        return 0;
-    }
-
    protected:
-    ber_bytes bytes = ber_bytes();
+    ber_bytes bytes;
 };
 
 class Response : public LDAPMessage {
@@ -64,6 +52,10 @@ class Response : public LDAPMessage {
 
     BERwriter writer = BERwriter();
 
+    ber_bytes get_bytes() {
+        return this->bytes;
+    }
+
     unsigned char* get_raw() {
         return this->bytes.data();
     }
@@ -71,16 +63,6 @@ class Response : public LDAPMessage {
     size_t get_size() {
         return this->bytes.size();
     }
-
-    void build(){};
-
-    int send(int client_socket) {
-        while (::send(client_socket, this->get_raw(), this->get_size(), 0) > 0) {
-            std::cout << "Sent " << this->get_size() << " bytes to client.\n";
-            break;
-        }
-        return 0;
-    };
 
    protected:
     ber_bytes bytes = ber_bytes();
@@ -93,10 +75,7 @@ class BindRequest : public Request {
     std::string authentication;
 
    public:
-    BindRequest() : Request() {}
-
-    void construct() {
-        this->reader = BERreader(bytes);
+    BindRequest(ber_bytes bytes) : Request(bytes) {
         this->ldapmessage_tag = reader.read_tag();
         this->message_id = this->reader.read_integer();
         this->parse();
@@ -195,10 +174,7 @@ class SearchRequest : public Request {
     std::vector<std::string> attributes;
 
    public:
-    SearchRequest() : Request() {}
-
-    void construct() {
-        this->reader = BERreader(bytes);
+    SearchRequest(ber_bytes bytes) : Request(bytes) {
         this->ldapmessage_tag = reader.read_tag();
         this->message_id = this->reader.read_integer();
         this->parse();
@@ -377,10 +353,7 @@ class UnbindRequest : public Request {
     unsigned char tag;
 
    public:
-    UnbindRequest() : Request() {}
-
-    void construct() {
-        this->reader = BERreader(bytes);
+    UnbindRequest(ber_bytes bytes) : Request(bytes) {
         this->ldapmessage_tag = reader.read_tag();
         this->message_id = this->reader.read_integer();
         this->parse();

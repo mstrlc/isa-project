@@ -28,6 +28,10 @@ class BERreader {
         this->iterator = 0;
     }
 
+    void reset() {
+        this->iterator = 0;
+    }
+
     int read_integer() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_INTEGER) {
