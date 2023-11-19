@@ -7,7 +7,7 @@
 #include <iomanip>
 #include <string>
 
-#include "ber.h"
+#include "ldap.cpp"
 #include "ldap.h"
 
 int serverSocket;
@@ -19,6 +19,8 @@ int setup(int port) {
         std::cerr << "Error: Couldn't create socket.\n";
         return 1;
     }
+    int enable = 1;
+    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
 
     // Bind the socket to an IP address and port
     sockaddr_in serverAddr{};
@@ -56,77 +58,58 @@ int server(int port, std::vector<std::vector<std::string>> data) {
         return 1;
     }
 
-    // TODO allocate dynamically
-    unsigned char buffer[4096];
-
-    // Send bindResponse
-    // Receive searchRequest
-    // Send searchResEntry
-    // Send searchResDone
-    // Receive next searchRequest or unbindRequest
-
-    ssize_t bytesRead;
-
     // Receive bindRequest
-    while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
-        std::cout << "Received " << bytesRead << " bytes from client.\n";
-        break;
-    }
+    BindRequest bindrequest = BindRequest();
+    bindrequest.receive(clientSocket);
+    bindrequest.construct();
 
     // TODO validate bindRequest
 
-    int messageId = buffer[4];
-    std::cout << "Received bindRequest" << std::endl
-              << "Message ID " << messageId << std::endl;
-
     // Send bindResponse
-
-    ber_bytes bindResponse = build_ldapmessage(messageId, BIND_RESPONSE);
-    std::cout << "bindResponse: " << std::endl;
-    print_hex(bindResponse);
-
-    std::cout << "Sending bindResponse" << std::endl;
-
-    while (send(clientSocket, bindResponse.data(), bindResponse.size(), 0) > 0) {
-        std::cout << "Sent " << bindResponse.size() << " bytes to client.\n";
-        break;
-    }
+    BindResponse bindresponse = BindResponse(RESULT_SUCCESS);
+    bindresponse.set_message_id(bindrequest.get_message_id());
+    bindresponse.set_result_code(RESULT_SUCCESS);
+    bindresponse.build();
+    bindresponse.send(clientSocket);
 
     // Receive searchRequest
-    while ((bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0)) > 0) {
-        std::cout << "Received " << bytesRead << " bytes from client.\n";
-        break;
-    }
+    SearchRequest searchrequest = SearchRequest();
+    searchrequest.receive(clientSocket);
+    searchrequest.construct();
 
     // TODO validate searchRequest
 
-    messageId = buffer[4];
-    std::cout << "Received searchRequest" << std::endl
-              << "Message ID " << messageId << std::endl;
-
     // Send searchResEntry
+    int index = 0;
+    for (std::vector<std::string> item : data) {
+        if (index > 10) {
+            break;
+        }
 
-    ber_bytes searchResEntry = build_ldapmessage(messageId, SEARCH_RESULT_ENTRY);
+        std::string cn = item[0];
+        std::string uid = item[1];
+        std::string mail = item[2];
 
-    std::cout << "Sending searchResEntry" << std::endl;
+        SearchResEntry searchresentry = SearchResEntry(uid, cn, mail);
+        searchresentry.set_message_id(searchrequest.get_message_id());
+        searchresentry.build();
+        searchresentry.send(clientSocket);
 
-    while (send(clientSocket, searchResEntry.data(), searchResEntry.size(), 0) > 0) {
-        std::cout << "Sent " << searchResEntry.size() << " bytes to client.\n";
-        break;
+        index++;
     }
 
     // Send searchResDone
+    SearchResDone searchresdone = SearchResDone(RESULT_SUCCESS);
+    searchresdone.set_message_id(searchrequest.get_message_id());
+    searchresdone.build();
+    searchresdone.send(clientSocket);
 
-    ber_bytes searchResDone = build_ldapmessage(messageId, SEARCH_RESULT_DONE);
-    std::cout << "searchResDone: " << std::endl;
-    print_hex(searchResDone);
+    // Receive unbindRequest
+    UnbindRequest unbindrequest = UnbindRequest();
+    unbindrequest.receive(clientSocket);
+    unbindrequest.construct();
 
-    std::cout << "Sending searchResDone" << std::endl;
-
-    while (send(clientSocket, searchResDone.data(), searchResDone.size(), 0) > 0) {
-        std::cout << "Sent " << searchResDone.size() << " bytes to client.\n";
-        break;
-    }
+    // TODO validate unbindRequest
 
     // Close the sockets
     close(clientSocket);
