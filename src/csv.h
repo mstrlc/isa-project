@@ -1,6 +1,4 @@
-#ifndef CSV_H
-#define CSV_H
-
+#pragma once
 #include <iostream>
 #include <string>
 #include <vector>
@@ -9,5 +7,3 @@
 // Rows are vectors of strings
 // Data is vector of rows
 std::vector<std::vector<std::string> > read_csv(std::string filename);
-
-#endif  // CSV_H

@@ -1,8 +1,5 @@
-#ifndef SERVER_H
-#define SERVER_H
+#pragma once
 
 #include <iostream>
 
 int server(int port, std::vector<std::vector<std::string> > data);
-
-#endif  // SERVER_H
