@@ -23,6 +23,15 @@
 
 int serverSocket;
 
+int my_assert(bool condition, std::string message) {
+    if (!condition) {
+        std::cerr << "Error: " << message << std::endl;
+        close(serverSocket);
+        return 1;
+    }
+    return 0;
+}
+
 ber_bytes receive_bytes(int client_socket) {
     unsigned char buffer[4096];
     bzero(buffer, sizeof(buffer));
@@ -101,7 +110,9 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     bytes = receive_bytes(clientSocket);
     BindRequest bindrequest = BindRequest(bytes);
 
-    // TODO validate bindRequest
+    // Validate bindRequest
+    my_assert(bindrequest.get_version() == 3, "Invalid version.");
+    my_assert(bindrequest.get_authentication() == 0x80, "Invalid authentication.");
 
     // Send bindResponse
     BindResponse bindresponse = BindResponse(RESULT_SUCCESS);
@@ -110,42 +121,61 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     bindresponse.build();
     send_bytes(clientSocket, bindresponse.get_bytes());
 
-    // Receive searchRequest
-    bytes = receive_bytes(clientSocket);
-    SearchRequest searchrequest = SearchRequest(bytes);
+    // LDAP loop
+    while (true) {
+        // Receive searchRequest
+        bytes = receive_bytes(clientSocket);
+        SearchRequest searchrequest = SearchRequest(bytes);
 
-    // TODO validate searchRequest
+        // Validate searchRequest
+        my_assert(searchrequest.get_scope() == SCOPE_WHOLE_SUBTREE, "Invalid scope.");
+        my_assert(searchrequest.get_deref_aliases() == 0, "Invalid derefAliases.");
 
-    // Send searchResEntry
-    int index = 0;
-    for (std::vector<std::string> item : data) {
-        if (index > 10) {
-            break;
+        int size_limit = searchrequest.get_size_limit();
+        if (size_limit == 0) {
+            size_limit = 100;  // Default size limit
+        }
+        // Send searchResEntry
+        int index = 0;
+        for (std::vector<std::string> item : data) {
+            if (index == size_limit) {
+                break;
+            }
+
+            std::string cn = item[0];
+            std::string uid = item[1];
+            std::string mail = item[2];
+
+            SearchResEntry searchresentry = SearchResEntry(uid, cn, mail);
+            searchresentry.set_message_id(searchrequest.get_message_id());
+            searchresentry.build();
+            send_bytes(clientSocket, searchresentry.get_bytes());
+
+            index++;
         }
 
-        std::string cn = item[0];
-        std::string uid = item[1];
-        std::string mail = item[2];
+        // Send searchResDone
+        SearchResDone searchresdone = SearchResDone(RESULT_SUCCESS);
+        searchresdone.set_message_id(searchrequest.get_message_id());
+        searchresdone.build();
+        send_bytes(clientSocket, searchresdone.get_bytes());
 
-        SearchResEntry searchresentry = SearchResEntry(uid, cn, mail);
-        searchresentry.set_message_id(searchrequest.get_message_id());
-        searchresentry.build();
-        send_bytes(clientSocket, searchresentry.get_bytes());
+        // Receive unbindRequest
+        bytes = receive_bytes(clientSocket);
 
-        index++;
+        if (get_protocolop(bytes) == UNBIND_REQUEST) {
+            break;
+        } else if (get_protocolop(bytes) == SEARCH_REQUEST) {
+            continue;
+        } else {
+            my_assert(false, "Invalid protocolOp.");
+        }
     }
 
-    // Send searchResDone
-    SearchResDone searchresdone = SearchResDone(RESULT_SUCCESS);
-    searchresdone.set_message_id(searchrequest.get_message_id());
-    searchresdone.build();
-    send_bytes(clientSocket, searchresdone.get_bytes());
-
-    // Receive unbindRequest
-    bytes = receive_bytes(clientSocket);
     UnbindRequest unbindrequest = UnbindRequest(bytes);
 
-    // TODO validate unbindRequest
+    // Validate unbindRequest
+    my_assert(get_protocolop(bytes) == UNBIND_REQUEST, "Invalid protocolOp.");
 
     // Close the sockets
     close(clientSocket);

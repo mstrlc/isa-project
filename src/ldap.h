@@ -25,6 +25,9 @@
 #define SEARCH_RESULT_DONE 0x65
 #define UNBIND_REQUEST 0x42
 
+// SCOPE
+#define SCOPE_WHOLE_SUBTREE 0x02
+
 // LDAP result code enum
 #define RESULT_SUCCESS 0x00
 #define RESULT_OPERATIONS_ERROR 0x01

@@ -72,7 +72,7 @@ class BindRequest : public Request {
     unsigned char tag;
     int version;
     std::string name;
-    std::string authentication;
+    unsigned char authentication;
 
    public:
     BindRequest(ber_bytes bytes) : Request(bytes) {
@@ -89,7 +89,7 @@ class BindRequest : public Request {
         return this->name;
     }
 
-    std::string get_authentication() {
+    unsigned char get_authentication() {
         return this->authentication;
     }
 
@@ -98,7 +98,7 @@ class BindRequest : public Request {
         this->tag = this->reader.read_tag();
         this->version = this->reader.read_integer();
         this->name = this->reader.read_octet_string();
-        this->authentication = this->reader.read_tag();  // todo implement authentication
+        this->authentication = this->reader.read_tag();
     }
 };
 
