@@ -13,6 +13,16 @@
 #include <iomanip>
 #include <iostream>
 
+struct filter {
+    unsigned char tag;
+    std::vector<filter> filters;
+    std::string attribute;
+    std::string value;
+    std::vector<std::string> initial;
+    std::vector<std::string> any;
+    std::vector<std::string> final;
+};
+
 class BERreader {
     size_t iterator = 0;
     ber_bytes bytes = ber_bytes();
@@ -112,6 +122,50 @@ class BERreader {
         unsigned char tag = this->get_next_byte();
         get_length();
         return tag;
+    }
+
+    filter read_filters() {
+        unsigned char tag = this->get_next_byte();
+        size_t length = this->get_length();
+        filter filter;
+
+        if (tag == FILTER_EQUALITY_MATCH) {
+            filter.tag = FILTER_EQUALITY_MATCH;
+            filter.attribute = this->read_octet_string();
+            filter.value = this->read_octet_string();
+
+        } else if (tag == FILTER_SUBSTRINGS) {
+            filter.tag = FILTER_SUBSTRINGS;
+            filter.attribute = this->read_octet_string();
+            this->read_sequence();
+            // substrings
+            unsigned char substrings_tag;
+            size_t substrings_length;
+
+            // loop through all
+            while (true) {
+                substrings_tag = this->get_next_byte();
+                if (substrings_tag != 0x80 && substrings_tag != 0x81 && substrings_tag != 0x82) {
+                    break;
+                }
+                substrings_length = this->get_length();
+                std::string substrings_value = "";
+                for (size_t i = 0; i < substrings_length; i++) {
+                    substrings_value += this->get_next_byte();
+                }
+                if (substrings_tag == 0x80) {
+                    filter.initial.push_back(substrings_value);
+                } else if (substrings_tag == 0x81) {
+                    filter.any.push_back(substrings_value);
+                } else if (substrings_tag == 0x82) {
+                    filter.final.push_back(substrings_value);
+                } else {
+                    throw "error";
+                }
+            }
+
+            return filter;
+        }
     }
 
    private:

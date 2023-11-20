@@ -22,5 +22,13 @@ const unsigned char BER_SEQUENCE = 0x30;
 const unsigned char BER_SET = 0x31;
 const unsigned char BER_ENUMERATED = 0x0A;
 
+//
+#define FILTER_AND 0xa0
+#define FILTER_OR 0xa1
+#define FILTER_NOT 0xa2
+#define FILTER_EQUALITY_MATCH 0xa3
+#define FILTER_SUBSTRINGS 0xa4
+
 // Type Definitions
 using ber_bytes = std::vector<unsigned char>;
+
