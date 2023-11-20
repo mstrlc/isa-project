@@ -1,31 +1,31 @@
 -- equalitymatch
-"(uid=xstrel03)" # 1
-"(cn=Strelec Matyas)" # 1
-"(mail=xstrel03@stud.fit.vutbr.cz)" # 1
+(uid=xstrel03) # 1
+(cn=Strelec Matyas) # 1
+(mail=xstrel03@stud.fit.vutbr.cz) # 1
 
 -- substrings
-"(uid=*strel03)" # 1
-"(uid=*strel*)" # 1
-"(uid=*st*el*3)" # 1
+(uid=*strel03) # 1
+(uid=*strel*) # 1
+(uid=*st*el*3) # 1
 
-"(cn=Strelec*)" # 1
-"(cn=*Matyas)" # 1
-"(cn=*a*yas*re*e*)" # 1
+(cn=Strelec*) # 1
+(cn=*Matyas) # 1
+(cn=*a*yas*re*e*) # 1
 
-"(mail=*str*l0*@*fi*vu*br.*z)" # 1
+(mail=*str*l0*@*fi*vu*br.*z) # 1
 
-"(cn=*Svatomir)" # 0
+(cn=*Svatomir) # 0
 
 -- AND
-"(&(uid=xstrel03)(cn=Strelec Matyas))" # 1
-"(&(uid=xstrel03)(cn=Strelec Matyas)(mail=xstrel03@stud.fit.vutbr.cz))" # 1
-"(&(cn=*Ondrej)(uid=x*3))" # 2
+(&(uid=xstrel03)(cn=Strelec Matyas)) # 1
+(&(uid=xstrel03)(cn=Strelec Matyas)(mail=xstrel03@stud.fit.vutbr.cz)) # 1
+(&(cn=*Ondrej)(uid=x*3)) # 2
 
 -- OR
-"(|(cn=*Karel)(cn=*Petr))" # 36
-"(|(cn=*Karel)(cn=*Petr)(cn=Matyas))" # 37
+(|(cn=*Karel)(cn=*Petr)) # 36
+(|(cn=*Karel)(cn=*Petr)(cn=*Matyas)) # 37
 
 -- NOT
-"(!(mail=*@stud.fit.vutbr.cz))" # 0
-"(!(uid=x*0*))" # 198
-"(uid=x*0*)" # 659
+(!(mail=*@stud.fit.vutbr.cz)) # 0
+(!(uid=x*0*)) # 198
+(uid=x*0*) # 659
