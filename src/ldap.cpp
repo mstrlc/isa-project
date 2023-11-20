@@ -170,8 +170,8 @@ class SearchRequest : public Request {
     int size_limit;
     int time_limit;
     bool types_only;
-    std::string filter;  // todo implement filter
-    std::vector<std::string> attributes;
+    filter filters;
+    // std::string attributes;
 
    public:
     SearchRequest(ber_bytes bytes) : Request(bytes) {
@@ -204,13 +204,13 @@ class SearchRequest : public Request {
         return this->types_only;
     }
 
-    std::string get_filter() {
-        return this->filter;
+    struct filter get_filter() {
+        return this->filters;
     }
 
-    std::vector<std::string> get_attributes() {
-        return this->attributes;
-    }
+    // std::vector<std::string> get_attributes() {
+    //     return this->attributes;
+    // }
 
    private:
     void parse() {
@@ -221,7 +221,7 @@ class SearchRequest : public Request {
         this->size_limit = this->reader.read_integer();
         this->time_limit = this->reader.read_integer();
         this->types_only = this->reader.read_boolean();
-        this->filter = this->reader.read_tag();  // todo implement filter
+        this->filters = this->reader.read_filters();
     }
 };
 
