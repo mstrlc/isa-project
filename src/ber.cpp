@@ -13,15 +13,7 @@
 #include <iomanip>
 #include <iostream>
 
-struct filter {
-    unsigned char tag;
-    std::vector<filter> filters;
-    std::string attribute;
-    std::string value;
-    std::vector<std::string> initial;
-    std::vector<std::string> any;
-    std::vector<std::string> final;
-};
+#include "filter.h"
 
 class BERreader {
     size_t iterator = 0;
@@ -45,11 +37,11 @@ class BERreader {
     int read_integer() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_INTEGER) {
-            throw "error";
+            throw std::runtime_error("Error reading integer (unexpected tag)");
         }
         size_t length = this->get_length();
         if (length > 4) {
-            throw "error";
+            throw std::runtime_error("Error reading integer (unexpected length)");
         }
         int integer = 0;
         for (size_t i = 0; i < length; i++) {
@@ -62,11 +54,11 @@ class BERreader {
     bool read_boolean() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_BOOLEAN) {
-            throw "error";
+            throw std::runtime_error("Error reading boolean (unexpected tag)");
         }
         size_t length = this->get_length();
         if (length > 1) {
-            throw "error";
+            throw std::runtime_error("Error reading boolean (unexpected length)");
         }
         bool boolean = this->get_next_byte();
         return boolean;
@@ -75,7 +67,7 @@ class BERreader {
     std::string read_octet_string() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_OCTET_STRING) {
-            throw "error";
+            throw std::runtime_error("Error reading octet string (unexpected tag)");
         }
         size_t length = this->get_length();
         std::string octet_string = "";
@@ -88,7 +80,7 @@ class BERreader {
     void read_sequence() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_SEQUENCE) {
-            throw "error";
+            throw std::runtime_error("Error reading sequence (unexpected tag)");
         }
         this->get_length();
     }
@@ -96,7 +88,7 @@ class BERreader {
     void read_set() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_SET) {
-            throw "error";
+            throw std::runtime_error("Error reading set (unexpected tag)");
         }
         this->get_length();
     }
@@ -104,11 +96,11 @@ class BERreader {
     int read_enumerated() {
         unsigned char tag = this->get_next_byte();
         if (tag != BER_ENUMERATED) {
-            throw "error";
+            throw std::runtime_error("Error reading enumerated (unexpected tag)");
         }
         size_t length = this->get_length();
         if (length > 4) {
-            throw "error";
+            throw std::runtime_error("Error reading enumerated (unexpected tag)");
         }
         int enumerated = 0;
         for (size_t i = 0; i < length; i++) {
@@ -126,8 +118,12 @@ class BERreader {
 
     filter read_filters() {
         unsigned char tag = this->get_next_byte();
-        size_t length = this->get_length();
+        this->get_length();
         filter filter;
+
+        // print tag as hex
+        std::cout << "tag: ";
+        std::cout << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(tag) << std::endl;
 
         if (tag == FILTER_EQUALITY_MATCH) {
             filter.tag = FILTER_EQUALITY_MATCH;
@@ -146,6 +142,7 @@ class BERreader {
             while (true) {
                 substrings_tag = this->get_next_byte();
                 if (substrings_tag != 0x80 && substrings_tag != 0x81 && substrings_tag != 0x82) {
+                    this->go_back_byte();
                     break;
                 }
                 substrings_length = this->get_length();
@@ -159,28 +156,45 @@ class BERreader {
                     filter.any.push_back(substrings_value);
                 } else if (substrings_tag == 0x82) {
                     filter.final.push_back(substrings_value);
-                } else {
-                    throw "error";
                 }
             }
+        } else if (tag == FILTER_AND) {
+            filter.tag = FILTER_AND;
 
-            return filter;
-        }
-    }
+            while (true) {
+                std::cout << "reading filter" << std::endl;
+                struct filter f = this->read_filters();
+                if (f.tag == 0x00) {
+                    break;
+                }
+                filter.filters.push_back(f);
+            }
 
-   private:
-    // Read next byte (unsigned char) from the bytes, increment iterator
-    unsigned char get_next_byte() {
-        if (this->iterator >= this->bytes.size()) {
-            throw "error";
+        } else if (tag == FILTER_OR) {
+            filter.tag = FILTER_OR;
+
+            while (true) {
+                std::cout << "reading filter" << std::endl;
+                struct filter f = this->read_filters();
+                if (f.tag == 0x00) {
+                    break;
+                }
+                filter.filters.push_back(f);
+            }
+        } else if (tag == FILTER_NOT) {
+            filter.tag = FILTER_NOT;
+            struct filter f = this->read_filters();
+            filter.filters.push_back(f);
         } else {
-            return this->bytes[this->iterator++];
+            filter.tag = 0x00;
         }
+
+        return filter;
     }
 
     // Decode length (short form or long form)
     size_t get_length() {
-        unsigned char length_byte = this->get_next_byte();
+        size_t length_byte = static_cast<size_t>(this->get_next_byte());
         if (length_byte < 128) {
             return length_byte;
         } else {
@@ -190,6 +204,22 @@ class BERreader {
                 length += this->get_next_byte();
             }
             return length;
+        }
+    }
+
+   private:
+    // Read next byte (unsigned char) from the bytes, increment iterator
+    unsigned char get_next_byte() {
+        if (this->iterator >= this->bytes.size()) {
+            throw std::runtime_error("Error reading byte (out of bounds)");
+        } else {
+            return this->bytes[this->iterator++];
+        }
+    }
+
+    void go_back_byte() {
+        if (this->iterator > 0) {
+            this->iterator--;
         }
     }
 };
