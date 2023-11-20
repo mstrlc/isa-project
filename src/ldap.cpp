@@ -152,10 +152,8 @@ class BindResponse : public Response {
         ber_bytes diagnostic_message_bytes = this->writer.create_octet_string("");  // TODO implement diagnosticMessage
 
         // Referral
-        // TODO implement referral
 
         // ServerSaslCreds
-        // TODO implement serverSaslCreds
 
         // Put together the BindResponse
         ber_bytes bindresponse_bytes = this->writer.create_sequence({result_code_bytes, matched_dn_bytes, diagnostic_message_bytes}, this->tag);
@@ -337,10 +335,8 @@ class SearchResDone : public Response {
         ber_bytes diagnostic_message_bytes = this->writer.create_octet_string(this->error_message);
 
         // Referral
-        // TODO implement referral
 
         // ServerSaslCreds
-        // TODO implement serverSaslCreds
 
         // Put together the BindResponse
         ber_bytes searchresultdone_bytes = this->writer.create_sequence({result_code_bytes, matched_dn_bytes, diagnostic_message_bytes}, this->tag);

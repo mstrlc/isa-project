@@ -1,7 +1,15 @@
-// filter_functions.h
 
-#ifndef FILTER_FUNCTIONS_H
-#define FILTER_FUNCTIONS_H
+/*
+ * filter.h
+ * 2023-11-20
+ *
+ * ISA project 2023
+ * LDAP server
+ *
+ * Matyas Strelec xstrel03
+ */
+
+#pragma once
 
 #include <string>
 #include <vector>
@@ -23,5 +31,3 @@ enum filter_result {
 };
 
 bool match_filter(filter f, std::string uid, std::string cn, std::string mail);
-
-#endif // FILTER_FUNCTIONS_H
