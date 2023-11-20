@@ -22,7 +22,7 @@ const unsigned char BER_SEQUENCE = 0x30;
 const unsigned char BER_SET = 0x31;
 const unsigned char BER_ENUMERATED = 0x0A;
 
-//
+// Filter constants
 #define FILTER_AND 0xa0
 #define FILTER_OR 0xa1
 #define FILTER_NOT 0xa2

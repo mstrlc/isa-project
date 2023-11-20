@@ -15,6 +15,10 @@
 
 #include "filter.h"
 
+/**
+ * @brief Reads BER encoded bytes and decodes them
+ *
+ */
 class BERreader {
     size_t iterator = 0;
     ber_bytes bytes = ber_bytes();
@@ -224,6 +228,10 @@ class BERreader {
     }
 };
 
+/**
+ * @brief Writes BER encoded bytes and encodes them
+ *
+ */
 class BERwriter {
     ber_bytes bytes = ber_bytes();
 

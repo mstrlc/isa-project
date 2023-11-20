@@ -30,6 +30,11 @@ int welcome_socket;
 
 int status = 0;
 
+/**
+ * @brief Handle the SIGINT signal
+ *
+ * @param sig signal
+ */
 void sighandler(int sig) {
     int pid = wait3(NULL, WNOHANG, NULL);
     close(comm_socket);
@@ -46,6 +51,12 @@ int my_assert(bool condition, std::string message) {
     return 0;
 }
 
+/**
+ * @brief Receive bytes from the client socket
+ *
+ * @param comm_socket Socket to receive bytes from
+ * @return ber_bytes Bytes received from the client
+ */
 ber_bytes receive_bytes(int comm_socket) {
     int buffer_size = 4096;
     ber_bytes buffer(buffer_size, 0);
@@ -74,6 +85,13 @@ ber_bytes receive_bytes(int comm_socket) {
     return received_bytes;
 }
 
+/**
+ * @brief Send bytes to the client socket
+ *
+ * @param comm_socket  Socket to send bytes to
+ * @param bytes     Bytes to send
+ * @return int    0 if successful, 1 otherwise
+ */
 int send_bytes(int comm_socket, ber_bytes bytes) {
     while (send(comm_socket, bytes.data(), bytes.size(), 0) > 0) {
         break;
@@ -201,6 +219,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
 }
 
 int server(int port, std::vector<std::vector<std::string>> data) {
+    signal(SIGINT, &sighandler);
+
     // Setup
     int rc;
     struct sockaddr_in6 sa;

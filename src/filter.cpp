@@ -16,6 +16,15 @@
 
 #include "ber.h"
 
+/**
+ * @brief Evaluate a given filter with provided uid, cn and mail
+ *
+ * @param f filter to evaluate
+ * @param uid uid to compare
+ * @param cn cn to compare
+ * @param mail mail to compare
+ * @return true if filter matches, false otherwise
+ */
 bool match_filter(filter f, std::string uid, std::string cn, std::string mail) {
     std::string compared_value;
     std::string initial_substr;

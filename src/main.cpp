@@ -15,6 +15,10 @@
 #include "server.h"
 #define LDAP_DEFAULT_PORT 389
 
+/**
+ * @brief Print help message
+ *
+ */
 void print_help() {
     std::cout << "Usage: ./isa-ldapserver {-p <port>} -f <soubor>" << std::endl;
     std::cout << "-p <port>: Set specific port for server listening to client requests. Default port is 389." << std::endl;

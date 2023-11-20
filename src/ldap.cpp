@@ -16,6 +16,11 @@
 #include "filter.h"
 
 // Classes
+
+/**
+ * @brief Parent class for any message
+ *
+ */
 class LDAPMessage {
    public:
     LDAPMessage() {}
@@ -36,6 +41,10 @@ class LDAPMessage {
     }
 };
 
+/**
+ * @brief Parent class for messages received from client
+ *
+ */
 class Request : public LDAPMessage {
    public:
     Request(ber_bytes bytes) {
@@ -106,6 +115,10 @@ class BindRequest : public Request {
     }
 };
 
+/**
+ * @brief Parse the bytes of a BindRequest, get data from it
+ *
+ */
 class BindResponse : public Response {
     unsigned char tag = BIND_RESPONSE;
     unsigned char result_code;
@@ -164,6 +177,10 @@ class BindResponse : public Response {
     }
 };
 
+/**
+ * @brief Parse the bytes of a SearchRequest, get data from it
+ *
+ */
 class SearchRequest : public Request {
     unsigned char tag;
     std::string base_object;
@@ -224,6 +241,11 @@ class SearchRequest : public Request {
         this->filters = this->reader.read_filters();
     }
 };
+
+/**
+ * @brief Create a SearchResEntry response and build it
+ *
+ */
 
 class SearchResEntry : public Response {
     unsigned char tag = SEARCH_RESULT_ENTRY;
@@ -289,6 +311,10 @@ class SearchResEntry : public Response {
     }
 };
 
+/**
+ * @brief Create a SearchResDone response and build it
+ *
+ */
 class SearchResDone : public Response {
     unsigned char tag = SEARCH_RESULT_DONE;
     unsigned char result_code;
@@ -347,6 +373,10 @@ class SearchResDone : public Response {
     }
 };
 
+/**
+ * @brief Create a UnbindRequest response and build it
+ *
+ */
 class UnbindRequest : public Request {
     unsigned char tag;
 

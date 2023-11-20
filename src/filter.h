@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+// Type Definitions
 struct filter {
     unsigned char tag;
     std::vector<filter> filters;
@@ -24,10 +25,9 @@ struct filter {
     std::vector<std::string> final;
 };
 
-enum filter_result {
-    FILTER_RESULT_FALSE,
-    FILTER_RESULT_TRUE,
-    FILTER_RESULT_UNDEFINED
-};
+// Filter constants
+#define FILTER_RESULT_FALSE 0
+#define FILTER_RESULT_TRUE 1
+#define FILTER_RESULT_UNDEFINED 2
 
 bool match_filter(filter f, std::string uid, std::string cn, std::string mail);
