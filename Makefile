@@ -11,7 +11,7 @@ DOC_DIR := doc
 EXE := isa-ldapserver
 SRC := $(wildcard $(SRC_DIR)/*.cpp)
 OBJ := $(SRC:.cpp=.o)
-DOC := doc.pdf
+DOC := doc/manual.pdf
 
 .PHONY: all debug doc run clean
 
