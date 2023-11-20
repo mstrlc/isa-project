@@ -12,152 +12,63 @@
 #include "server.h"
 
 #include <arpa/inet.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
+#include <csignal>
 #include <cstring>
 #include <iomanip>
 #include <regex>
 #include <string>
 
+#include "filter.h"
 #include "ldap.cpp"
 #include "ldap.h"
 
-int serverSocket;
+int comm_socket;
+int welcome_socket;
+
+int status = 0;
 
 int my_assert(bool condition, std::string message) {
     if (!condition) {
         std::cerr << "Error: " << message << std::endl;
-        close(serverSocket);
+        close(welcome_socket);
         return 1;
     }
     return 0;
 }
 
-enum filter_result {
-    FILTER_RESULT_FALSE,
-    FILTER_RESULT_TRUE,
-    FILTER_RESULT_UNDEFINED
-};
+ber_bytes receive_bytes(int comm_socket) {
+    int buffer_size = 4096;
+    ber_bytes buffer(buffer_size, 0);
 
+    ber_bytes received_bytes;
 
-bool match_filter(filter f, std::string uid, std::string cn, std::string mail) {
-    std::string compared_value;
-
-    switch (f.tag) {
-        case 0:
-            return true;
-        case FILTER_EQUALITY_MATCH:
-            if(f.attribute == "uid") {
-                compared_value = uid;
-            } else if(f.attribute == "cn") {
-                compared_value = cn;
-            } else if(f.attribute == "mail") {
-                compared_value = mail;
-            } else {
-                return false;
-            }
-
-            return compared_value == f.value;
-
-            break;
-
-        case FILTER_SUBSTRINGS:
-            std::string initial_substr;
-            std::string final_substr;
-
-            int initial = FILTER_RESULT_UNDEFINED;
-            int any = FILTER_RESULT_UNDEFINED;
-            int final = FILTER_RESULT_UNDEFINED;
-
-            if(f.attribute == "uid") {
-                compared_value = uid;
-            } else if(f.attribute == "cn") {
-                compared_value = cn;
-            } else if(f.attribute == "mail") {
-                compared_value = mail;
-            } else {
-                return false;
-            }
-
-            // Initial
-            if (f.initial.size() > 0) {
-                initial_substr = f.initial[0];
-                if (initial_substr.size() > compared_value.size()) {
-                    initial = FILTER_RESULT_FALSE;
-                } else {
-                    initial = compared_value.substr(0, initial_substr.size()) == initial_substr;
-                }
-            }
-
-            // Final
-            if (f.final.size() > 0) {
-                final_substr = f.final[0];
-                if (final_substr.size() > compared_value.size()) {
-                    final = FILTER_RESULT_FALSE;
-                } else {
-                    final = compared_value.substr(compared_value.size() - final_substr.size(), final_substr.size()) == final_substr;
-                }
-            }
-
-            // Any
-            if (f.any.size() > 0) {
-
-                for (std::string substr : f.any) {
-                    if (substr.size() > compared_value.size()) {
-                        any = FILTER_RESULT_FALSE;
-                        break;
-                    }
-
-                    if (initial == FILTER_RESULT_TRUE) {
-                        compared_value = compared_value.substr(initial_substr.size(), compared_value.size() - initial_substr.size());
-                    }
-
-                    if (final == FILTER_RESULT_TRUE) {
-                        compared_value = compared_value.substr(0, compared_value.size() - final_substr.size());
-                    }
-
-                    if (compared_value.find(substr) != std::string::npos) {
-
-                        any = FILTER_RESULT_TRUE;
-                        compared_value = compared_value.substr(0, compared_value.find(substr)) + compared_value.substr(compared_value.find(substr) + substr.size(), compared_value.size() - compared_value.find(substr) - substr.size());
-                    }
-                    else {
-                        any = FILTER_RESULT_FALSE;
-                        break;
-                    }
-                }
-            }
-
-            bool result = true;
-
-            if(initial != FILTER_RESULT_UNDEFINED) {
-                result = result & initial;
-            }
-            if(any != FILTER_RESULT_UNDEFINED) {
-                result = result & any;
-            }
-            if(final != FILTER_RESULT_UNDEFINED) {
-                result = result & final;
-            }
-
-            return result;
-    }
-}
-
-ber_bytes receive_bytes(int client_socket) {
-    unsigned char buffer[4096];
-    bzero(buffer, sizeof(buffer));
+    int total_bytes_read = 0;
     int bytes_read;
-    while ((bytes_read = recv(client_socket, buffer, sizeof(buffer), 0)) > 0) {
-        std::cout << "Received " << bytes_read << " bytes from client.\n";
-        break;
-    }
-    std::cout << bytes_read << std::endl;
-    return ber_bytes(buffer, buffer + bytes_read);
+
+    do {
+        bytes_read = recv(comm_socket, buffer.data(), buffer_size, 0);
+
+        if (bytes_read > 0) {
+            total_bytes_read += bytes_read;
+            received_bytes.insert(received_bytes.end(), buffer.begin(), buffer.begin() + bytes_read);
+        } else if (bytes_read == 0) {
+            return received_bytes;
+            break;
+        } else {
+            std::cerr << "Error: Couldn't receive data from client." << std::endl;
+            return ber_bytes();
+            break;
+        }
+    } while (bytes_read == buffer_size);
+
+    return received_bytes;
 }
 
-int send_bytes(int client_socket, ber_bytes bytes) {
-    while (send(client_socket, bytes.data(), bytes.size(), 0) > 0) {
+int send_bytes(int comm_socket, ber_bytes bytes) {
+    while (send(comm_socket, bytes.data(), bytes.size(), 0) > 0) {
         std::cout << "Sent " << bytes.size() << " bytes to client.\n";
         break;
     }
@@ -171,56 +82,54 @@ unsigned char get_protocolop(ber_bytes bytes) {
     return reader.read_tag();  // ProtocolOp tag
 }
 
-int setup(int port) {
-    // Create a socket
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == -1) {
-        std::cerr << "Error: Couldn't create socket.\n";
-        return 1;
-    }
-    int enable = 1;
-    setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+// int setup(int port) {
+//     // Create a socket
+//     welcome_socket = socket(AF_INET, SOCK_STREAM, 0);
+//     if (welcome_socket == -1) {
+//         std::cerr << "Error: Couldn't create socket.\n";
+//         return 1;
+//     }
+//     int enable = 1;
+//     setsockopt(welcome_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
 
-    // Bind the socket to an IP address and port
-    sockaddr_in serverAddr{};
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons(port);
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
+//     // Bind the socket to an IP address and port
+//     sockaddr_in serverAddr{};
+//     serverAddr.sin_family = AF_INET;
+//     serverAddr.sin_port = htons(port);
+//     serverAddr.sin_addr.s_addr = INADDR_ANY;
 
-    if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
-        std::cerr << "Error: Couldn't bind the socket.\n";
-        close(serverSocket);
-        return 1;
-    }
+//     if (bind(welcome_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
+//         std::cerr << "Error: Couldn't bind the socket.\n";
+//         close(welcome_socket);
+//         return 1;
+//     }
 
-    // Listen for incoming connections
-    if (listen(serverSocket, 5) == -1) {
-        std::cerr << "Error: Couldn't listen on the socket.\n";
-        close(serverSocket);
-        return 1;
-    }
-    std::cout << "Server listening on port " << port << "...\n";
-    return 0;
-}
+//     // Listen for incoming connections
+//     if (listen(welcome_socket, 5) == -1) {
+//         std::cerr << "Error: Couldn't listen on the socket.\n";
+//         close(welcome_socket);
+//         return 1;
+//     }
+//     std::cout << "Server listening on port " << port << "...\n";
+//     return 0;
+// }
 
-int server(int port, std::vector<std::vector<std::string>> data) {
-    // Setup the server
-    setup(port);
+int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
     ber_bytes bytes;
 
-    // Accept incoming connections and print received data
-    sockaddr_in clientAddr{};
-    socklen_t clientAddrLen = sizeof(clientAddr);
-    int clientSocket = accept(serverSocket, (struct sockaddr *)&clientAddr, &clientAddrLen);
-    if (clientSocket == -1) {
-        std::cerr << "Error: Couldn't accept the client connection.\n";
-        close(serverSocket);
-        return 1;
-    }
-
     // Receive bindRequest
-    bytes = receive_bytes(clientSocket);
-    BindRequest bindrequest = BindRequest(bytes);
+    bytes = receive_bytes(comm_socket);
+
+    BindRequest bindrequest = BindRequest();
+    try {
+        bindrequest = BindRequest(bytes);
+
+    } catch (const std::runtime_error &e) {
+        int result = my_assert(false, e.what());
+        if (result == 1) {
+            return 1;
+        }
+    }
 
     // Validate bindRequest
     my_assert(get_protocolop(bytes) == BIND_REQUEST, "Invalid protocolOp.");
@@ -232,13 +141,23 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     bindresponse.set_message_id(bindrequest.get_message_id());
     bindresponse.set_result_code(RESULT_SUCCESS);
     bindresponse.build();
-    send_bytes(clientSocket, bindresponse.get_bytes());
+    send_bytes(comm_socket, bindresponse.get_bytes());
 
     // LDAP loop
     while (true) {
         // Receive searchRequest
-        bytes = receive_bytes(clientSocket);
-        SearchRequest searchrequest = SearchRequest(bytes);
+        bytes = receive_bytes(comm_socket);
+
+        SearchRequest searchrequest = SearchRequest();
+        try {
+            searchrequest = SearchRequest(bytes);
+
+        } catch (const std::runtime_error &e) {
+            int result = my_assert(false, e.what());
+            if (result == 1) {
+                return 1;
+            }
+        }
 
         // Validate searchRequest
         my_assert(get_protocolop(bytes) == SEARCH_REQUEST, "Invalid protocolOp.");
@@ -271,23 +190,28 @@ int server(int port, std::vector<std::vector<std::string>> data) {
             SearchResEntry searchresentry = SearchResEntry(uid, cn, mail);
             searchresentry.set_message_id(searchrequest.get_message_id());
             searchresentry.build();
-            send_bytes(clientSocket, searchresentry.get_bytes());
+            send_bytes(comm_socket, searchresentry.get_bytes());
 
             index++;
         }
 
         // Send searchResDone
-        SearchResDone searchresdone = SearchResDone(RESULT_SUCCESS);
+        SearchResDone searchresdone = SearchResDone(result_code);
         searchresdone.set_message_id(searchrequest.get_message_id());
         searchresdone.build();
-        send_bytes(clientSocket, searchresdone.get_bytes());
+        send_bytes(comm_socket, searchresdone.get_bytes());
 
         // Receive unbindRequest
-        bytes = receive_bytes(clientSocket);
+        bytes = receive_bytes(comm_socket);
+        std::cout << "end of loop" << std::endl;
 
         if (get_protocolop(bytes) == UNBIND_REQUEST) {
+            std::cout << "unb" << std::endl;
+
             break;
         } else if (get_protocolop(bytes) == SEARCH_REQUEST) {
+            std::cout << "searchreq" << std::endl;
+
             continue;
         } else {
             my_assert(false, "Invalid protocolOp.");
@@ -299,9 +223,78 @@ int server(int port, std::vector<std::vector<std::string>> data) {
     // Validate unbindRequest
     my_assert(get_protocolop(bytes) == UNBIND_REQUEST, "Invalid protocolOp.");
 
+    return 0;
+}
+
+int server(int port, std::vector<std::vector<std::string>> data) {
+    // Setup
+    int rc;
+    struct sockaddr_in6 sa;
+    struct sockaddr_in6 sa_client;
+    char str[INET6_ADDRSTRLEN];
+    int port_number = port;
+
+    // Forked child process
+    pid_t child_pid;
+
+    // Create welcome socket
+    socklen_t sa_client_len = sizeof(sa_client);
+    if ((welcome_socket = socket(PF_INET6, SOCK_STREAM, 0)) < 0) {
+        perror("ERROR: socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // Allow IPv4 and IPv6 to bind to the same port
+    int disable = 0;
+    if (setsockopt(welcome_socket, IPPROTO_IPV6, IPV6_V6ONLY, &disable, sizeof(disable)) < 0) {
+        perror("ERROR: setsockopt");
+        exit(EXIT_FAILURE);
+    }
+
+    // Bind welcome socket
+    memset(&sa, 0, sizeof(sa));
+    sa.sin6_family = AF_INET6;
+    sa.sin6_addr = in6addr_any;
+    sa.sin6_port = htons(port_number);
+
+    if ((rc = ::bind(welcome_socket, (struct sockaddr *)&sa, sizeof(sa))) < 0) {
+        perror("ERROR: bind");
+        exit(EXIT_FAILURE);
+    }
+
+    // Listen for new connections, limit is 10
+    if ((listen(welcome_socket, 10)) < 0) {
+        perror("ERROR: listen");
+        exit(EXIT_FAILURE);
+    }
+
+    // Accept new connections in loop
+    while (1) {
+        comm_socket = accept(welcome_socket, (struct sockaddr *)&sa_client, &sa_client_len);
+        // Successful connection
+        if (comm_socket > 0) {
+            if (inet_ntop(AF_INET6, &sa_client.sin6_addr, str, sizeof(str))) {
+                // Fork child process to allow parent process to accept new connections
+                if ((child_pid = fork()) == 0) {
+                    close(welcome_socket);  // Child process
+                    // Accept messages from client
+
+                    // LDAP server running
+                    ldap_server(comm_socket, data);
+                } else {
+                    close(comm_socket);  // Parent process
+                }
+            }
+        }
+    }
+
+    // Wait for all children to finish
+    while ((child_pid = waitpid(-1, &status, WNOHANG)) > 0)
+        ;
+
     // Close the sockets
-    close(clientSocket);
-    close(serverSocket);
+    close(comm_socket);
+    close(welcome_socket);
 
     return 0;
 }
