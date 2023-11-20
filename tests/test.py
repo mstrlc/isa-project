@@ -1,3 +1,6 @@
+# Run with: python3 test.py <host> <port>
+# Example: python3 test.py merlin.fit.vutbr.cz 20203
+
 import sys
 import subprocess
 
