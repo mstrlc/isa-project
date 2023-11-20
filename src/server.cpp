@@ -123,6 +123,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
         }
     }
 
+    std::cout << "Received bindRequest" << std::endl;
+
     // Validate bindRequest
     my_assert(get_protocolop(bytes) == BIND_REQUEST, "Invalid protocolOp.");
     my_assert(bindrequest.get_version() == 3, "Invalid version.");
@@ -134,6 +136,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
     bindresponse.set_result_code(RESULT_SUCCESS);
     bindresponse.build();
     send_bytes(comm_socket, bindresponse.get_bytes());
+
+    std::cout << "Sent bindResponse" << std::endl;
 
     // LDAP loop
     while (true) {
@@ -150,6 +154,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
                 return 1;
             }
         }
+
+        std::cout << "Received searchRequest" << std::endl;
 
         // Validate searchRequest
         my_assert(get_protocolop(bytes) == SEARCH_REQUEST, "Invalid protocolOp.");
@@ -184,6 +190,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
             searchresentry.build();
             send_bytes(comm_socket, searchresentry.get_bytes());
 
+            std::cout << "Sent searchResEntry" << std::endl;
+
             index++;
         }
 
@@ -192,6 +200,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
         searchresdone.set_message_id(searchrequest.get_message_id());
         searchresdone.build();
         send_bytes(comm_socket, searchresdone.get_bytes());
+
+        std::cout << "Sent searchResDone" << std::endl;
 
         // Receive unbindRequest
         bytes = receive_bytes(comm_socket);
@@ -209,6 +219,8 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
 
     // Validate unbindRequest
     my_assert(get_protocolop(bytes) == UNBIND_REQUEST, "Invalid protocolOp.");
+
+    std::cout << "Received unbindRequest" << std::endl;
 
     return 0;
 }
@@ -268,8 +280,13 @@ int server(int port, std::vector<std::vector<std::string>> data) {
                     close(welcome_socket);  // Child process
                     // Accept messages from client
 
+                    std::cout << "Accepted connection" << std::endl;
+
                     // LDAP server running
                     ldap_server(comm_socket, data);
+
+                    std::cout << "Connection closed" << std::endl;
+
                 } else {
                     close(comm_socket);  // Parent process
                 }
