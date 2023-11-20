@@ -181,6 +181,8 @@ I was capturing the network traffic with Wireshark and comparing the hexdump pac
 For automated testing, I wrote a Python script that will take the input file located in `tests'/testing.txt`, parse the filter and expected number of entries,
 and send a request to the server. The server will then send a response, which is parsed by the script and compared to the expected number of entries. The script then prints out the result of the test.
 
+The script was ran on macOS, while the server was running on `merlin`.
+
 The tests helped me find a bug in the evalutaing of the `Substrings` filter, where the `any` substrings were not matched correctly when more than 3 `any`
 substrings are present.
 
