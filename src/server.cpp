@@ -30,6 +30,13 @@ int welcome_socket;
 
 int status = 0;
 
+void sighandler(int sig) {
+    int pid = wait3(NULL, WNOHANG, NULL);
+    close(comm_socket);
+    close(welcome_socket);
+    exit(0);
+}
+
 int my_assert(bool condition, std::string message) {
     if (!condition) {
         std::cerr << "Error: " << message << std::endl;
@@ -69,7 +76,6 @@ ber_bytes receive_bytes(int comm_socket) {
 
 int send_bytes(int comm_socket, ber_bytes bytes) {
     while (send(comm_socket, bytes.data(), bytes.size(), 0) > 0) {
-        std::cout << "Sent " << bytes.size() << " bytes to client.\n";
         break;
     }
     return 0;
@@ -81,38 +87,6 @@ unsigned char get_protocolop(ber_bytes bytes) {
     reader.read_integer();     // Message ID
     return reader.read_tag();  // ProtocolOp tag
 }
-
-// int setup(int port) {
-//     // Create a socket
-//     welcome_socket = socket(AF_INET, SOCK_STREAM, 0);
-//     if (welcome_socket == -1) {
-//         std::cerr << "Error: Couldn't create socket.\n";
-//         return 1;
-//     }
-//     int enable = 1;
-//     setsockopt(welcome_socket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
-
-//     // Bind the socket to an IP address and port
-//     sockaddr_in serverAddr{};
-//     serverAddr.sin_family = AF_INET;
-//     serverAddr.sin_port = htons(port);
-//     serverAddr.sin_addr.s_addr = INADDR_ANY;
-
-//     if (bind(welcome_socket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) == -1) {
-//         std::cerr << "Error: Couldn't bind the socket.\n";
-//         close(welcome_socket);
-//         return 1;
-//     }
-
-//     // Listen for incoming connections
-//     if (listen(welcome_socket, 5) == -1) {
-//         std::cerr << "Error: Couldn't listen on the socket.\n";
-//         close(welcome_socket);
-//         return 1;
-//     }
-//     std::cout << "Server listening on port " << port << "...\n";
-//     return 0;
-// }
 
 int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
     ber_bytes bytes;
@@ -167,7 +141,7 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
         struct filter filter = searchrequest.get_filter();
         int size_limit = searchrequest.get_size_limit();
         if (size_limit == 0) {
-            size_limit = 100;  // Default size limit
+            size_limit = 1000;  // Default size limit
         }
         // Send searchResEntry
         int index = 0;
