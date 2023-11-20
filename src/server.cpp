@@ -36,7 +36,6 @@ int status = 0;
  * @param sig signal
  */
 void sighandler(int sig) {
-    std::cout << "Closing server, received " << sig << std::endl;
     int pid = wait3(NULL, WNOHANG, NULL);
     while (pid > 0) {
         pid = wait3(NULL, WNOHANG, NULL);
