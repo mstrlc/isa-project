@@ -9,6 +9,39 @@ respond to clients' requests. The server is implemented in C++ in the C++20 stan
 The code is in the `/src` subdirectory, the documentation is in the `/doc` subdirectory,
 and the tests are in the `/tests` subdirectory.
 
+## LDAP Protocol
+
+The Lightweight Directory Access Protocol (LDAP) is an open, vendor-neutral, industry standard application protocol for accessing and maintaining
+distributed directory information services. [3]
+
+A client starts an LDAP session by connecting to an LDAP server. The client then sends an operation request to the server, and a server sends responses
+in return. With some exceptions, the client does not need to wait for a response before sending the next request, and the server may send the responses
+in any order. All information is transmitted using Basic Encoding Rules (BER).
+
+The protocol provides an interface with directories that follow the 1993 edition of the X.500 model:
+
+An entry consists of a set of attributes.
+An attribute has a name (an attribute type or attribute description) and one or more values. The attributes are defined in a schema (see below).
+Each entry has a unique identifier: its Distinguished Name (DN). [5][6]
+
+### BER encoding
+
+LDAP is a binary protocol, which helps make it compact and efficient to parse. The particular binary encoding that it uses is based on ASN.1
+(Abstract Syntax Notation One), which is a framework for representing structured data. LDAP uses the Basic Encoding Rules (BER). In ASN.1 BER,
+each piece of data is called an element.
+
+In BER encoding, different types of data can exist, including primitive types like integers, strings, and booleans, as well as constructed types
+such as sequences and sets. These data types are encoded using a tag-length-value format.
+
+Tag: It specifies the type of data or the data element. The tag is typically a numerical identifier that indicates the meaning of the data that
+follows.
+
+Length: It indicates the number of octets (bytes) or elements in the Value field. The length can vary, allowing for flexibility in representing
+different amounts of data.
+
+Value: This field contains the actual data, which can be of variable length based on the information provided in the Length field. It holds the
+content associated with the Tag. [4]
+
 ## Usage
 
 The server can be compiled using `make` command which produces a binary called `isa-ldapserver`.
@@ -44,6 +77,8 @@ The server receives the database and port as arguments. First, it sets up the TC
 binded on either IPv4 or IPv6, the connection is non-blocking. The server then enters an infinite loop
 where it waits for incoming connections. When a connection is received, it is accepted and the server
 is forked to handle the connection.
+
+The server is based on the implementation from IPK subject stubs on the FIT Gitea. [1]
 
 The `ldapserver()` function is the finite state machine that handles the connection. It receives the
 data from the client, parses it to the class and handles any errors. It then builds a response and sends
@@ -94,7 +129,7 @@ Each of the `BindRequest`, `SearchRequest`, and `UnbindRequest` classes inherit 
 They contain getters for their specific fields, and the `parse()` method which parses the message using
 the `BERreader` class.
 
-The `parse()` method reads the components in the specific order as defined in the LDAP protocol.
+The `parse()` method reads the components in the specific order as defined in the LDAP protocol. [2]
 
 #### Responses
 The `Response` class is used to build messages. It contains methods to build the message using the
@@ -105,13 +140,13 @@ They contain methods to set the messages attributes.
 
 With the attributes filled, `build()` method can be called to build the message using the `BERwriter` class,
 returning a vector of bytes. The `build()` method writes the components in the specific order as defined
-in the LDAP protocol.
+in the LDAP protocol. [2]
 
 ### Filter
 
 The `filter` structure contains the filter type, the data used by the `EqualityMatch` and `Substrings` filters,
 and a vector of filters used by the `And`, `Or` and `Not` filters.
-The filter is parsed in the `BERreader` class when creating the class of the request.
+The filter is parsed in the `BERreader` class when creating the class of the request. [2]
 
 #### Evaluation
 
@@ -132,3 +167,49 @@ The server handles only the requests that are defined in the assignment. It does
 
 The server can only work with databases with data in ASCII format. It does not support any other encoding (such as UTF-8).
 
+The server can only use the `simple` authentication method. It does not support any other authentication method.
+
+The substring filter can sometimes fail, particurarly when using more than 3 `any` substrings. I wasn't yet able to fix this bug.
+
+## Testing
+
+The server was tested using the `ldapsearch` command. During development, I was testing the parts that I was writing code for manually, comparing the output
+of my server with the one of `ldap.fit.vutbr.cz` server.
+
+I was capturing the network traffic with Wireshark and comparing the hexdump packets.
+
+For automated testing, I wrote a Python script that will take the input file located in `tests'/testing.txt`, parse the filter and expected number of entries,
+and send a request to the server. The server will then send a response, which is parsed by the script and compared to the expected number of entries. The script then prints out the result of the test.
+
+The tests helped me find a bug in the evalutaing of the `Substrings` filter, where the `any` substrings were not matched correctly when more than 3 `any`
+substrings are present.
+
+The server was tested on `merlin`, GCC 10.5 and macOS 14, clang 15.0.0. It works on both.
+
+## References
+
+
+[1]: VESELÝ, Vladimír. NESFIT/IPK-Projekty/Stubs at master - IPK-Projekty - FIT - VUT Brno - git [online]. [cit. 2023-11-20].
+
+Avaiable at: [`https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp`](https://git.fit.vutbr.cz/NESFIT/IPK-Projekty/src/branch/master/Stubs/cpp)
+
+[2]: J. SERMERSHEIM, Ed. RFC4511. Lightweight Directory Access Protocol (LDAP): The Protocol [online]. 2006 [cit. 2023-11-20].
+
+Avaiable at: [`https://www.rfc-editor.org/rfc/rfc4511`](https://www.rfc-editor.org/rfc/rfc4511)
+
+[3]: MATOUŠEK, Petr. Síťové aplikace a správa sítí. Poštovní a adresářové služby [online]. 2023 [cit. 2023-11-20].
+
+Available at: [`https://moodle.vut.cz/pluginfile.php/707865/mod_resource/content/4/isa-mail.pdf`](https://moodle.vut.cz/pluginfile.php/707865/mod_resource/content/4/isa-mail.pdf)
+
+[4]: WILSON, Neil. LDAPv3 Wire Protocol Reference: The ASN.1 Basic Encoding Rules. LDAP.com [online]. 2023 [cit. 2023-11-20].
+
+Avaiable at: [`https://ldap.com/ldapv3-wire-protocol-reference-asn1-ber/`](https://ldap.com/ldapv3-wire-protocol-reference-asn1-ber/)
+
+[5]: ELLINGWOOD, Justin. Understanding the LDAP Protocol, Data Hierarchy, and Entry Components. DigitalOcean [online]. 2023 [cit. 2023-11-20].
+
+Avaiable at: [`https://www.digitalocean.com/community/tutorials/understanding-the-ldap-protocol...`](https://www.digitalocean.com/community/tutorials/understanding-the-ldap-protocol-data-hierarchy-and-entry-components#what-is-a-directory-service)
+
+
+[6]: Lightweight Directory Access Protocol. Wikipedia.org [online]. [cit. 2023-11-20].
+
+Avaiable at: [`https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol`](https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol)
