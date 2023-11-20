@@ -1,6 +1,10 @@
 # Makefile
-# Project: ISA -- LDAP server
-# Author: Matyas Strelec xstrel03
+# 2023-11-20
+#
+# ISA project 2023
+# LDAP server
+#
+# Matyas Strelec xstrel03
 
 CC=g++
 CFLAGS=-std=c++20 -Wall -Wextra -pedantic -O0 -g
