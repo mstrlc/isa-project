@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "filter.h"
+
 // Classes
 class LDAPMessage {
    public:
@@ -75,6 +77,8 @@ class BindRequest : public Request {
     unsigned char authentication;
 
    public:
+    BindRequest() : Request(ber_bytes()) {}
+
     BindRequest(ber_bytes bytes) : Request(bytes) {
         this->ldapmessage_tag = reader.read_tag();
         this->message_id = this->reader.read_integer();
@@ -174,6 +178,8 @@ class SearchRequest : public Request {
     // std::string attributes;
 
    public:
+    SearchRequest() : Request(ber_bytes()) {}
+
     SearchRequest(ber_bytes bytes) : Request(bytes) {
         this->ldapmessage_tag = reader.read_tag();
         this->message_id = this->reader.read_integer();
@@ -207,10 +213,6 @@ class SearchRequest : public Request {
     struct filter get_filter() {
         return this->filters;
     }
-
-    // std::vector<std::string> get_attributes() {
-    //     return this->attributes;
-    // }
 
    private:
     void parse() {
@@ -329,10 +331,10 @@ class SearchResDone : public Response {
         ber_bytes result_code_bytes = this->writer.create_enumerated(this->result_code);
 
         // MatchedDN
-        ber_bytes matched_dn_bytes = this->writer.create_octet_string(this->matched_dn);  // TODO implement matchedDN
+        ber_bytes matched_dn_bytes = this->writer.create_octet_string(this->matched_dn);
 
         // DiagnosticMessage
-        ber_bytes diagnostic_message_bytes = this->writer.create_octet_string(this->error_message);  // TODO implement diagnosticMessage
+        ber_bytes diagnostic_message_bytes = this->writer.create_octet_string(this->error_message);
 
         // Referral
         // TODO implement referral

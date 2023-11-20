@@ -16,6 +16,7 @@
 #include "ber.cpp"
 #include "ber.h"
 
+
 // LDAP message tags
 #define LDAP_MESSAGE 0x30
 #define BIND_REQUEST 0x60
