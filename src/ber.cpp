@@ -125,10 +125,6 @@ class BERreader {
         this->get_length();
         filter filter;
 
-        // print tag as hex
-        std::cout << "tag: ";
-        std::cout << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(tag) << std::endl;
-
         if (tag == FILTER_EQUALITY_MATCH) {
             filter.tag = FILTER_EQUALITY_MATCH;
             filter.attribute = this->read_octet_string();
@@ -166,7 +162,6 @@ class BERreader {
             filter.tag = FILTER_AND;
 
             while (true) {
-                std::cout << "reading filter" << std::endl;
                 struct filter f = this->read_filters();
                 if (f.tag == 0x00) {
                     break;
@@ -178,7 +173,6 @@ class BERreader {
             filter.tag = FILTER_OR;
 
             while (true) {
-                std::cout << "reading filter" << std::endl;
                 struct filter f = this->read_filters();
                 if (f.tag == 0x00) {
                     break;

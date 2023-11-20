@@ -195,15 +195,10 @@ int ldap_server(int comm_socket, std::vector<std::vector<std::string>> data) {
 
         // Receive unbindRequest
         bytes = receive_bytes(comm_socket);
-        std::cout << "end of loop" << std::endl;
 
         if (get_protocolop(bytes) == UNBIND_REQUEST) {
-            std::cout << "unb" << std::endl;
-
             break;
         } else if (get_protocolop(bytes) == SEARCH_REQUEST) {
-            std::cout << "searchreq" << std::endl;
-
             continue;
         } else {
             my_assert(false, "Invalid protocolOp.");

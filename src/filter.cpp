@@ -138,7 +138,6 @@ bool match_filter(filter f, std::string uid, std::string cn, std::string mail) {
         }
 
         case FILTER_OR: {
-            std::cout << "parsing " << cn << std::endl;
             for (filter f1 : f.filters) {
                 if (match_filter(f1, uid, cn, mail)) {
                     return true;
